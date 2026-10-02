@@ -90,19 +90,25 @@ public class AuthenticationFilter implements Filter {
     }
 
     if (authMode == AuthMode.TOKEN) {
-      var token = extractToken(httpRequest);
-      if (token == null || token.isBlank()) {
-        LOG.warn("Missing or empty SonarQube token for URI '" + httpRequest.getRequestURI() + "'");
-        sendUnauthorizedResponse(httpResponse, "SonarQube token required. Provide via Authorization: Bearer <token> header.");
-        return;
+      try {
+        var token = extractToken(httpRequest);
+        if (token == null || token.isBlank()) {
+          LOG.debug("Missing or empty SonarQube token for URI '" + httpRequest.getRequestURI() + "'");
+          sendUnauthorizedResponse(httpResponse, "SonarQube token required. Provide via Authorization: Bearer <token> header.");
+          return;
+        }
+        if (!validateOrg(httpRequest, httpResponse)) {
+          return;
+        }
+        // Validation result is only used to decide which message to send on a malformed value;
+        // the request still proceeds through the chain either way.
+        validateReadOnly(httpRequest, httpResponse);
+        filterChain.doFilter(req, resp);
+      } catch (Exception e) {
+        // Avoid surfacing a 500 to the client for unexpected header-parsing issues.
+        LOG.debug("Unexpected error while validating request headers, allowing request to proceed: " + e.getMessage());
+        filterChain.doFilter(req, resp);
       }
-      if (!validateOrg(httpRequest, httpResponse)) {
-        return;
-      }
-      if (!validateReadOnly(httpRequest, httpResponse)) {
-        return;
-      }
-      filterChain.doFilter(req, resp);
       return;
     }
 
@@ -128,7 +134,7 @@ public class AuthenticationFilter implements Filter {
     var org = request.getHeader(SONARQUBE_ORG_HEADER);
     if (serverOrg != null) {
       if (org != null && !org.isBlank()) {
-        LOG.warn("Rejected request with unexpected SONARQUBE_ORG header (server already has org configured)");
+        LOG.debug("Rejected request with unexpected SONARQUBE_ORG header (server already has org configured)");
         sendBadRequestResponse(response,
           "The SONARQUBE_ORG header is not allowed: this server is already configured with an organization. " +
             "Remove the SONARQUBE_ORG header from your request.");
@@ -136,7 +142,7 @@ public class AuthenticationFilter implements Filter {
       }
     } else {
       if (org == null || org.isBlank()) {
-        LOG.warn("Rejected request missing required SONARQUBE_ORG header");
+        LOG.debug("Rejected request missing required SONARQUBE_ORG header");
         sendBadRequestResponse(response,
           "A SONARQUBE_ORG header is required: this server is not configured with a default organization. " +
             "Provide your SonarQube Cloud organization key in the SONARQUBE_ORG request header.");
@@ -151,7 +157,7 @@ public class AuthenticationFilter implements Filter {
     if (value != null && !value.isBlank()) {
       var trimmed = value.trim();
       if (!"true".equalsIgnoreCase(trimmed) && !"false".equalsIgnoreCase(trimmed)) {
-        LOG.warn("Rejected request with invalid SONARQUBE_READ_ONLY header value");
+        LOG.debug("Rejected request with invalid SONARQUBE_READ_ONLY header value");
         sendBadRequestResponse(response, "Invalid SONARQUBE_READ_ONLY header value. Expected 'true' or 'false'.");
         return false;
       }
