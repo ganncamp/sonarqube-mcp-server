@@ -61,6 +61,13 @@ public class IssuesApi {
     }
   }
 
+  public SearchResponse search(SearchParams params, @Nullable String organization) {
+    try (var response = helper.get(buildIssueSearchPath(params, organization))) {
+      var responseStr = response.bodyAsString();
+      return new Gson().fromJson(responseStr, SearchResponse.class);
+    }
+  }
+
   public void doTransition(String issueKey, Transition transition) {
     var body = "issue=" + urlEncode(issueKey) + "&transition=" + urlEncode(transition.getStatus());
     try (var ignored = helper.post(DO_TRANSITION_PATH, FORM_URL_ENCODED_CONTENT_TYPE, body)) {
@@ -91,6 +98,10 @@ public class IssuesApi {
   }
 
   private String buildIssueSearchPath(SearchParams params) {
+    return buildIssueSearchPath(params, helper.getOrganization());
+  }
+
+  private String buildIssueSearchPath(SearchParams params, @Nullable String organization) {
     var componentsParamName = helper.isSonarQubeCloud() ? "componentKeys" : "components";
     var newCodePeriodParamName = helper.isSonarQubeCloud() ? "sinceLeakPeriod" : "inNewCodePeriod";
     var builder = new UrlBuilder(SEARCH_PATH)
@@ -105,7 +116,7 @@ public class IssuesApi {
       .addParam("issues", params.issueKeys())
       .addParam("p", params.page())
       .addParam("ps", params.pageSize())
-      .addParam("organization", helper.getOrganization());
+      .addParam("organization", organization);
     return builder.build();
   }
 
