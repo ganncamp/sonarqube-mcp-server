@@ -74,6 +74,7 @@ import org.sonarsource.sonarqube.mcp.tools.hotspots.ChangeSecurityHotspotStatusT
 import org.sonarsource.sonarqube.mcp.tools.hotspots.SearchSecurityHotspotsTool;
 import org.sonarsource.sonarqube.mcp.tools.hotspots.ShowSecurityHotspotTool;
 import org.sonarsource.sonarqube.mcp.tools.issues.ChangeIssueStatusTool;
+import org.sonarsource.sonarqube.mcp.tools.issues.CheckSonarQubeConnectivityTool;
 import org.sonarsource.sonarqube.mcp.tools.issues.SearchIssuesTool;
 import org.sonarsource.sonarqube.mcp.tools.languages.ListLanguagesTool;
 import org.sonarsource.sonarqube.mcp.tools.measures.GetComponentMeasuresTool;
@@ -445,6 +446,7 @@ public class SonarQubeMcpServer implements ServerApiProvider {
       new ChangeIssueStatusTool(this),
       new SearchMyProjectsTool(this, mcpConfiguration.isSonarQubeCloud()),
       new SearchIssuesTool(this, mcpConfiguration.isSonarQubeCloud()),
+      new CheckSonarQubeConnectivityTool(),
       new SearchSecurityHotspotsTool(this),
       new ShowSecurityHotspotTool(this),
       new ChangeSecurityHotspotStatusTool(this),
